@@ -16,7 +16,7 @@ use cfg_if::cfg_if;
 use lazy_static::lazy_static;
 
 #[derive(Default)]
-struct RegistryCore {
+pub struct RegistryCore {
     pub collectors_by_id: HashMap<u64, Box<dyn Collector>>,
     pub dim_hashes_by_name: HashMap<String, u64>,
     pub desc_ids: HashSet<u64>,
@@ -37,7 +37,7 @@ impl std::fmt::Debug for RegistryCore {
 }
 
 impl RegistryCore {
-    fn register(&mut self, c: Box<dyn Collector>) -> Result<()> {
+    pub fn register(&mut self, c: Box<dyn Collector>) -> Result<()> {
         let mut desc_id_set = HashSet::new();
         let mut collector_id: u64 = 0;
 
@@ -90,7 +90,7 @@ impl RegistryCore {
         }
     }
 
-    fn unregister(&mut self, c: Box<dyn Collector>) -> Result<()> {
+    pub fn unregister(&mut self, c: Box<dyn Collector>) -> Result<()> {
         let mut id_set = Vec::new();
         let mut collector_id: u64 = 0;
         for desc in c.desc() {
@@ -116,7 +116,7 @@ impl RegistryCore {
         Ok(())
     }
 
-    fn gather(&self) -> Vec<proto::MetricFamily> {
+    pub fn gather(&self) -> Vec<proto::MetricFamily> {
         let mut mf_by_name = BTreeMap::new();
 
         for c in self.collectors_by_id.values() {
@@ -183,8 +183,8 @@ impl RegistryCore {
 
         // Write out MetricFamilies sorted by their name.
         mf_by_name
-            .into_iter()
-            .map(|(_, mut m)| {
+            .into_values()
+            .map(|mut m| {
                 // Add registry namespace prefix, if any.
                 if let Some(ref namespace) = self.prefix {
                     let prefixed = format!("{}_{}", namespace, m.get_name());
@@ -226,6 +226,11 @@ impl Registry {
     /// `new` creates a Registry.
     pub fn new() -> Registry {
         Default::default()
+    }
+
+    /// Return the inner `RegistryCore`.
+    pub fn inner(&self) -> Arc<RwLock<RegistryCore>> {
+        self.r.clone()
     }
 
     /// Create a new registry, with optional custom prefix and labels.
